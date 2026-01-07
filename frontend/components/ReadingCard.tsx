@@ -18,7 +18,7 @@ interface Reading {
   title: string
   filename: string
   thesis: string
-  arguments: Argument[]
+  arguments?: Argument[]
   historical_context: string
   historiography: string
   created_at: string

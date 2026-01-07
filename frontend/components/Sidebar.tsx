@@ -78,6 +78,19 @@ export default function Sidebar({
         />
       )}
 
+      {/* Toggle button - always visible */}
+      {!isOpen && (
+        <button
+          onClick={onToggle}
+          className="fixed top-4 left-4 z-50 p-2.5 rounded-lg bg-[var(--color-cream)] border border-[var(--color-ink-muted)]/20
+            shadow-md hover:shadow-lg hover:bg-[var(--color-parchment)] transition-all duration-200"
+        >
+          <svg className="w-5 h-5 text-[var(--color-ink)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <path d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
+      )}
+
       {/* Sidebar */}
       <aside
         className={`
@@ -85,7 +98,6 @@ export default function Sidebar({
           w-72 bg-[var(--color-cream)] border-r border-[var(--color-ink-muted)]/10
           transform transition-transform duration-300 ease-out
           ${isOpen ? 'translate-x-0' : '-translate-x-full'}
-          lg:translate-x-0 lg:static lg:z-0
           flex flex-col
         `}
       >
@@ -105,7 +117,7 @@ export default function Sidebar({
             </div>
             <button
               onClick={onToggle}
-              className="lg:hidden p-2 rounded-lg hover:bg-[var(--color-parchment-dark)] transition-colors"
+              className="p-2 rounded-lg hover:bg-[var(--color-parchment-dark)] transition-colors"
             >
               <svg className="w-5 h-5 text-[var(--color-ink-muted)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                 <path d="M6 18L18 6M6 6l12 12" strokeLinecap="round" strokeLinejoin="round"/>

@@ -13,14 +13,23 @@ const MODULE_COLORS = [
   '#4a5568', '#744210', '#285e61', '#702459',
 ]
 
+interface Evidence {
+  text: string
+  page: string
+}
+
+interface Argument {
+  argument: string
+  evidence: Evidence[]
+}
+
 interface Reading {
   id: number
   week_number: number
   title: string
   filename: string
   thesis: string
-  supporting_arguments: string[]
-  evidence: string[]
+  arguments?: Argument[]
   historical_context: string
   historiography: string
   created_at: string
@@ -119,27 +128,10 @@ export default function Home() {
 
       {/* Main Content */}
       <main className="flex-1 min-h-screen">
-        {/* Mobile Header */}
-        <div className="lg:hidden sticky top-0 z-30 bg-[var(--color-parchment)] border-b border-[var(--color-ink-muted)]/10 px-4 py-3">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="p-2 -ml-2 rounded-lg hover:bg-[var(--color-parchment-dark)] transition-colors"
-            >
-              <svg className="w-6 h-6 text-[var(--color-ink)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <path d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </button>
-            <h1 className="font-display text-lg font-semibold text-[var(--color-ink)]">
-              {selectedModule?.name || 'Study with Hubert'}
-            </h1>
-          </div>
-        </div>
-
-        <div className="py-8 lg:py-12 px-4 sm:px-6 lg:px-8">
+        <div className="py-8 lg:py-12 px-4 sm:px-6 lg:px-8 pl-16 lg:pl-8">
           <div className="max-w-4xl mx-auto">
-            {/* Header - Desktop */}
-            <header className="hidden lg:block text-center mb-12 animate-fade-in-up">
+            {/* Header */}
+            <header className="text-center mb-12 animate-fade-in-up">
               <div className="inline-flex items-center gap-3 mb-4">
                 <span className="w-12 h-px bg-gradient-to-r from-transparent via-[var(--color-gold)] to-transparent"></span>
                 <svg className="w-6 h-6 text-[var(--color-gold)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
