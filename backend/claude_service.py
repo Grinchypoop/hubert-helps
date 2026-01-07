@@ -16,15 +16,20 @@ Analyze the following academic text and provide a structured breakdown. Return y
 {
   "title": "The title of the work (extract from text or infer from content)",
   "thesis": "The main argument or central claim of the text in 2-3 sentences",
-  "supporting_arguments": [
-    "First key supporting argument",
-    "Second key supporting argument",
-    "Third key supporting argument"
-  ],
-  "evidence": [
-    "Key piece of evidence or source cited",
-    "Another important piece of evidence",
-    "Additional evidence supporting the thesis"
+  "arguments": [
+    {
+      "argument": "First key supporting argument",
+      "evidence": [
+        {"text": "Specific evidence supporting this argument", "page": "p. 12"},
+        {"text": "Another piece of evidence", "page": "pp. 15-16"}
+      ]
+    },
+    {
+      "argument": "Second key supporting argument",
+      "evidence": [
+        {"text": "Evidence for this argument", "page": "p. 23"}
+      ]
+    }
   ],
   "historical_context": "The historical period, events, and context that the text addresses (2-3 sentences)",
   "historiography": "The historiographical school of thought or approach the author takes (e.g., social history, Marxist, revisionist, cultural history, etc.) and how it relates to other scholarship in the field"
@@ -33,8 +38,10 @@ Analyze the following academic text and provide a structured breakdown. Return y
 Guidelines:
 - Be concise but comprehensive
 - Focus on what would help a student understand and remember the key points
-- For supporting_arguments, identify 3-5 main points that support the thesis
-- For evidence, note specific sources, examples, or data the author uses
+- Identify 3-5 main arguments that support the thesis
+- For each argument, find 1-3 specific pieces of evidence from the text
+- IMPORTANT: Include page numbers for each piece of evidence (look for page markers like "p.", "pg", page breaks, or numbered sections in the text)
+- If page numbers aren't clear, use approximate locations like "early in text", "middle section", "conclusion"
 - If the text doesn't clearly fit academic history writing, do your best to extract the main ideas
 
 TEXT TO ANALYZE:

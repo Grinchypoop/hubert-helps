@@ -2,14 +2,23 @@
 
 import { useState } from 'react'
 
+interface Evidence {
+  text: string
+  page: string
+}
+
+interface Argument {
+  argument: string
+  evidence: Evidence[]
+}
+
 interface Reading {
   id: number
   week_number: number
   title: string
   filename: string
   thesis: string
-  supporting_arguments: string[]
-  evidence: string[]
+  arguments: Argument[]
   historical_context: string
   historiography: string
   created_at: string
@@ -22,9 +31,7 @@ interface ReadingCardProps {
 
 export default function ReadingCard({ reading, onDelete }: ReadingCardProps) {
   const [confirmDelete, setConfirmDelete] = useState(false)
-  const [expandedBranches, setExpandedBranches] = useState<Set<string>>(
-    new Set(['thesis', 'arguments', 'evidence', 'context', 'historiography'])
-  )
+  const [expandedArgs, setExpandedArgs] = useState<Set<number>>(new Set())
 
   const handleDelete = () => {
     if (confirmDelete) {
@@ -35,14 +42,14 @@ export default function ReadingCard({ reading, onDelete }: ReadingCardProps) {
     }
   }
 
-  const toggleBranch = (branch: string) => {
-    const newExpanded = new Set(expandedBranches)
-    if (newExpanded.has(branch)) {
-      newExpanded.delete(branch)
+  const toggleArgument = (index: number) => {
+    const newExpanded = new Set(expandedArgs)
+    if (newExpanded.has(index)) {
+      newExpanded.delete(index)
     } else {
-      newExpanded.add(branch)
+      newExpanded.add(index)
     }
-    setExpandedBranches(newExpanded)
+    setExpandedArgs(newExpanded)
   }
 
   return (
@@ -73,151 +80,135 @@ export default function ReadingCard({ reading, onDelete }: ReadingCardProps) {
 
       {/* Mindmap Content */}
       <div className="p-5">
-        <div className="space-y-3">
-
-          {/* Thesis - Main Node */}
-          <div className="relative">
-            <button
-              onClick={() => toggleBranch('thesis')}
-              className="w-full flex items-center gap-2 text-left group"
-            >
-              <div className="w-3 h-3 rounded-full bg-[var(--color-burgundy)] flex-shrink-0" />
-              <span className="font-display font-semibold text-[var(--color-burgundy)] text-sm uppercase tracking-wide">
-                Thesis
-              </span>
-              <svg
-                className={`w-4 h-4 text-[var(--color-ink-muted)] transition-transform ${expandedBranches.has('thesis') ? 'rotate-180' : ''}`}
-                viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-              >
-                <path d="M19.5 8.25l-7.5 7.5-7.5-7.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </button>
-            {expandedBranches.has('thesis') && (
-              <div className="mt-2 ml-1.5 pl-4 border-l-2 border-[var(--color-burgundy)]/30">
-                <p className="text-[var(--color-ink)] leading-relaxed text-sm">{reading.thesis}</p>
-              </div>
-            )}
+        {/* Thesis - Root Node */}
+        <div className="flex flex-col items-center">
+          <div className="bg-[var(--color-burgundy)] text-white px-6 py-4 rounded-xl max-w-2xl text-center shadow-lg">
+            <div className="text-xs uppercase tracking-wider opacity-80 mb-2">Thesis</div>
+            <p className="text-sm leading-relaxed font-medium">{reading.thesis}</p>
           </div>
 
-          {/* Supporting Arguments Branch */}
-          {reading.supporting_arguments.length > 0 && (
-            <div className="relative">
-              <button
-                onClick={() => toggleBranch('arguments')}
-                className="w-full flex items-center gap-2 text-left group"
-              >
-                <div className="w-3 h-3 rounded-full bg-[var(--color-navy)] flex-shrink-0" />
-                <span className="font-display font-semibold text-[var(--color-navy)] text-sm uppercase tracking-wide">
-                  Arguments
-                </span>
-                <span className="text-xs text-[var(--color-ink-muted)]">({reading.supporting_arguments.length})</span>
-                <svg
-                  className={`w-4 h-4 text-[var(--color-ink-muted)] transition-transform ${expandedBranches.has('arguments') ? 'rotate-180' : ''}`}
-                  viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                >
-                  <path d="M19.5 8.25l-7.5 7.5-7.5-7.5" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </button>
-              {expandedBranches.has('arguments') && (
-                <div className="mt-2 ml-1.5 pl-4 border-l-2 border-[var(--color-navy)]/30 space-y-2">
-                  {reading.supporting_arguments.map((arg, i) => (
-                    <div key={i} className="flex gap-2">
-                      <span className="w-5 h-5 rounded-full bg-[var(--color-navy)]/10 flex items-center justify-center text-xs font-medium text-[var(--color-navy)] flex-shrink-0 mt-0.5">
-                        {i + 1}
-                      </span>
-                      <p className="text-sm text-[var(--color-ink-light)] leading-relaxed">{arg}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+          {/* Connector Line */}
+          {reading.arguments && reading.arguments.length > 0 && (
+            <div className="w-0.5 h-8 bg-[var(--color-ink-muted)]/30"></div>
           )}
-
-          {/* Evidence Branch */}
-          {reading.evidence.length > 0 && (
-            <div className="relative">
-              <button
-                onClick={() => toggleBranch('evidence')}
-                className="w-full flex items-center gap-2 text-left group"
-              >
-                <div className="w-3 h-3 rounded-full bg-[var(--color-sage)] flex-shrink-0" />
-                <span className="font-display font-semibold text-[var(--color-sage)] text-sm uppercase tracking-wide">
-                  Evidence
-                </span>
-                <span className="text-xs text-[var(--color-ink-muted)]">({reading.evidence.length})</span>
-                <svg
-                  className={`w-4 h-4 text-[var(--color-ink-muted)] transition-transform ${expandedBranches.has('evidence') ? 'rotate-180' : ''}`}
-                  viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                >
-                  <path d="M19.5 8.25l-7.5 7.5-7.5-7.5" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </button>
-              {expandedBranches.has('evidence') && (
-                <div className="mt-2 ml-1.5 pl-4 border-l-2 border-[var(--color-sage)]/30 space-y-1.5">
-                  {reading.evidence.map((ev, i) => (
-                    <div key={i} className="flex gap-2">
-                      <span className="text-[var(--color-sage)] mt-1">•</span>
-                      <p className="text-sm text-[var(--color-ink-light)] leading-relaxed">{ev}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Historical Context Branch */}
-          {reading.historical_context && (
-            <div className="relative">
-              <button
-                onClick={() => toggleBranch('context')}
-                className="w-full flex items-center gap-2 text-left group"
-              >
-                <div className="w-3 h-3 rounded-full bg-[var(--color-gold)] flex-shrink-0" />
-                <span className="font-display font-semibold text-[var(--color-gold)] text-sm uppercase tracking-wide">
-                  Context
-                </span>
-                <svg
-                  className={`w-4 h-4 text-[var(--color-ink-muted)] transition-transform ${expandedBranches.has('context') ? 'rotate-180' : ''}`}
-                  viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                >
-                  <path d="M19.5 8.25l-7.5 7.5-7.5-7.5" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </button>
-              {expandedBranches.has('context') && (
-                <div className="mt-2 ml-1.5 pl-4 border-l-2 border-[var(--color-gold)]/30">
-                  <p className="text-sm text-[var(--color-ink-light)] leading-relaxed">{reading.historical_context}</p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Historiography Branch */}
-          {reading.historiography && (
-            <div className="relative">
-              <button
-                onClick={() => toggleBranch('historiography')}
-                className="w-full flex items-center gap-2 text-left group"
-              >
-                <div className="w-3 h-3 rounded-full bg-[var(--color-ink-muted)] flex-shrink-0" />
-                <span className="font-display font-semibold text-[var(--color-ink-muted)] text-sm uppercase tracking-wide">
-                  Historiography
-                </span>
-                <svg
-                  className={`w-4 h-4 text-[var(--color-ink-muted)] transition-transform ${expandedBranches.has('historiography') ? 'rotate-180' : ''}`}
-                  viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                >
-                  <path d="M19.5 8.25l-7.5 7.5-7.5-7.5" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </button>
-              {expandedBranches.has('historiography') && (
-                <div className="mt-2 ml-1.5 pl-4 border-l-2 border-[var(--color-ink-muted)]/30">
-                  <p className="text-sm text-[var(--color-ink-light)] leading-relaxed">{reading.historiography}</p>
-                </div>
-              )}
-            </div>
-          )}
-
         </div>
+
+        {/* Arguments Grid */}
+        {reading.arguments && reading.arguments.length > 0 && (
+          <div className="mt-2">
+            {/* Horizontal connector */}
+            <div className="flex justify-center mb-4">
+              <div className="h-0.5 bg-[var(--color-ink-muted)]/30" style={{ width: `${Math.min(reading.arguments.length * 200, 800)}px` }}></div>
+            </div>
+
+            {/* Argument Cards */}
+            <div className="flex flex-wrap justify-center gap-4">
+              {reading.arguments.map((arg, index) => (
+                <div key={index} className="flex flex-col items-center">
+                  {/* Vertical connector to card */}
+                  <div className="w-0.5 h-4 bg-[var(--color-ink-muted)]/30 -mt-4"></div>
+
+                  {/* Argument Card */}
+                  <div
+                    className={`
+                      w-64 bg-white border-2 rounded-xl shadow-md cursor-pointer transition-all duration-200
+                      ${expandedArgs.has(index)
+                        ? 'border-[var(--color-navy)] shadow-lg'
+                        : 'border-[var(--color-ink-muted)]/20 hover:border-[var(--color-navy)]/50 hover:shadow-lg'
+                      }
+                    `}
+                    onClick={() => toggleArgument(index)}
+                  >
+                    {/* Argument Header */}
+                    <div className="px-4 py-3 border-b border-[var(--color-ink-muted)]/10">
+                      <div className="flex items-center gap-2">
+                        <span className="w-6 h-6 rounded-full bg-[var(--color-navy)] text-white flex items-center justify-center text-xs font-bold">
+                          {index + 1}
+                        </span>
+                        <span className="text-xs uppercase tracking-wide text-[var(--color-navy)] font-semibold">
+                          Argument
+                        </span>
+                        <svg
+                          className={`w-4 h-4 text-[var(--color-ink-muted)] ml-auto transition-transform ${expandedArgs.has(index) ? 'rotate-180' : ''}`}
+                          viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                        >
+                          <path d="M19.5 8.25l-7.5 7.5-7.5-7.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </div>
+                    </div>
+
+                    {/* Argument Text */}
+                    <div className="px-4 py-3">
+                      <p className="text-sm text-[var(--color-ink)] leading-relaxed">{arg.argument}</p>
+                    </div>
+                  </div>
+
+                  {/* Evidence Section (expanded) */}
+                  {expandedArgs.has(index) && arg.evidence && arg.evidence.length > 0 && (
+                    <div className="flex flex-col items-center mt-2">
+                      {/* Arrow down */}
+                      <div className="flex flex-col items-center">
+                        <div className="w-0.5 h-4 bg-[var(--color-sage)]"></div>
+                        <svg className="w-4 h-4 text-[var(--color-sage)] -mt-1" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M12 16l-6-6h12l-6 6z"/>
+                        </svg>
+                      </div>
+
+                      {/* Evidence Cards */}
+                      <div className="space-y-2 mt-1">
+                        {arg.evidence.map((ev, evIndex) => (
+                          <div
+                            key={evIndex}
+                            className="w-60 bg-[var(--color-sage)]/10 border border-[var(--color-sage)]/30 rounded-lg px-3 py-2"
+                          >
+                            <div className="flex items-start gap-2">
+                              <div className="flex-1">
+                                <p className="text-xs text-[var(--color-ink-light)] leading-relaxed">{ev.text}</p>
+                              </div>
+                            </div>
+                            <div className="mt-2 flex justify-end">
+                              <span className="text-xs font-medium text-[var(--color-sage)] bg-[var(--color-sage)]/20 px-2 py-0.5 rounded">
+                                {ev.page}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Context & Historiography - Footer */}
+        {(reading.historical_context || reading.historiography) && (
+          <div className="mt-8 pt-6 border-t border-[var(--color-ink-muted)]/10">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {reading.historical_context && (
+                <div className="bg-[var(--color-gold)]/10 rounded-lg p-4">
+                  <div className="text-xs uppercase tracking-wide text-[var(--color-gold)] font-semibold mb-2">
+                    Historical Context
+                  </div>
+                  <p className="text-sm text-[var(--color-ink-light)] leading-relaxed">
+                    {reading.historical_context}
+                  </p>
+                </div>
+              )}
+              {reading.historiography && (
+                <div className="bg-[var(--color-ink-muted)]/10 rounded-lg p-4">
+                  <div className="text-xs uppercase tracking-wide text-[var(--color-ink-muted)] font-semibold mb-2">
+                    Historiography
+                  </div>
+                  <p className="text-sm text-[var(--color-ink-light)] leading-relaxed">
+                    {reading.historiography}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

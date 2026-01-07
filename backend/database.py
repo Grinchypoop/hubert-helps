@@ -22,8 +22,7 @@ def init_db():
             title TEXT NOT NULL,
             filename TEXT NOT NULL,
             thesis TEXT,
-            supporting_arguments TEXT,
-            evidence TEXT,
+            arguments TEXT,
             historical_context TEXT,
             historiography TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -39,16 +38,14 @@ def save_reading(week_number: int, filename: str, analysis: dict) -> int:
     cursor.execute("""
         INSERT INTO readings (
             week_number, title, filename, thesis,
-            supporting_arguments, evidence,
-            historical_context, historiography
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            arguments, historical_context, historiography
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
     """, (
         week_number,
         analysis.get("title", filename),
         filename,
         analysis.get("thesis"),
-        json.dumps(analysis.get("supporting_arguments", [])),
-        json.dumps(analysis.get("evidence", [])),
+        json.dumps(analysis.get("arguments", [])),
         analysis.get("historical_context"),
         analysis.get("historiography")
     ))
