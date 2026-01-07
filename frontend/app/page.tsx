@@ -203,7 +203,7 @@ export default function Home() {
                 </div>
 
                 {/* Week Selection & Upload - Side by Side */}
-                <section className="mb-10 animate-fade-in-up stagger-1" style={{ opacity: 0 }}>
+                <section className="mb-10 animate-fade-in-up stagger-1 relative z-40" style={{ opacity: 0 }}>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {/* Select Week */}
                     <div>
@@ -224,7 +224,7 @@ export default function Home() {
                 </section>
 
                 {/* Readings Display */}
-                <section className="animate-fade-in-up stagger-3" style={{ opacity: 0 }}>
+                <section className="animate-fade-in-up stagger-3 relative z-10" style={{ opacity: 0 }}>
                   <div className="flex items-center justify-between gap-4 mb-6">
                     <div className="flex items-center gap-4">
                       <h3 className="font-display text-lg font-medium text-[var(--color-ink)]">
