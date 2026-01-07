@@ -1,89 +1,101 @@
 'use client'
 
+import { useState, useRef, useEffect } from 'react'
+
 interface WeekSelectorProps {
   selectedWeek: number
   onSelectWeek: (week: number) => void
 }
 
-const toRoman = (num: number): string => {
-  const romanNumerals: [number, string][] = [
-    [10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I']
-  ]
-  let result = ''
-  for (const [value, symbol] of romanNumerals) {
-    while (num >= value) {
-      result += symbol
-      num -= value
-    }
-  }
-  return result
-}
-
 export default function WeekSelector({ selectedWeek, onSelectWeek }: WeekSelectorProps) {
+  const [isOpen, setIsOpen] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
   const weeks = Array.from({ length: 13 }, (_, i) => i + 1)
 
-  return (
-    <div className="relative">
-      {/* Timeline line */}
-      <div className="absolute top-1/2 left-0 right-0 h-px bg-[var(--color-ink-muted)]/20 -translate-y-1/2 hidden sm:block"></div>
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
-      <div className="flex flex-wrap gap-2 sm:gap-0 sm:justify-between relative">
-        {weeks.map((week) => {
-          const isSelected = selectedWeek === week
-          return (
-            <button
-              key={week}
-              onClick={() => onSelectWeek(week)}
-              className={`
-                group relative flex flex-col items-center focus-ring rounded-lg
-                transition-all duration-200 ease-out
-                ${isSelected ? 'z-10' : 'z-0'}
-              `}
-            >
-              {/* Circle indicator */}
-              <div
+  const handleSelect = (week: number) => {
+    onSelectWeek(week)
+    setIsOpen(false)
+  }
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      {/* Dropdown Button */}
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className={`
+          w-full sm:w-64 flex items-center justify-between gap-3 px-4 py-3
+          bg-[var(--color-cream)] border border-[var(--color-ink-muted)]/20 rounded-lg
+          text-left transition-all duration-200
+          hover:border-[var(--color-burgundy)]/40
+          ${isOpen ? 'border-[var(--color-burgundy)] ring-2 ring-[var(--color-burgundy)]/10' : ''}
+        `}
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-[var(--color-burgundy)] flex items-center justify-center">
+            <span className="text-white font-semibold text-sm">{selectedWeek}</span>
+          </div>
+          <span className="font-medium text-[var(--color-ink)]">Week {selectedWeek}</span>
+        </div>
+        <svg
+          className={`w-5 h-5 text-[var(--color-ink-muted)] transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+        >
+          <path d="M19.5 8.25l-7.5 7.5-7.5-7.5" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </button>
+
+      {/* Dropdown Menu */}
+      {isOpen && (
+        <div className="absolute z-50 mt-2 w-full sm:w-64 bg-[var(--color-cream)] border border-[var(--color-ink-muted)]/20 rounded-lg shadow-lg overflow-hidden animate-scale-in">
+          <div className="max-h-64 overflow-y-auto py-1">
+            {weeks.map((week) => (
+              <button
+                key={week}
+                onClick={() => handleSelect(week)}
                 className={`
-                  w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center
-                  transition-all duration-200 ease-out
-                  ${isSelected
-                    ? 'bg-[var(--color-burgundy)] shadow-lg shadow-[var(--color-burgundy)]/20 scale-110'
-                    : 'bg-[var(--color-cream)] border border-[var(--color-ink-muted)]/20 hover:border-[var(--color-burgundy)]/40 hover:bg-[var(--color-parchment-dark)]'
+                  w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors
+                  ${selectedWeek === week
+                    ? 'bg-[var(--color-burgundy)]/10 text-[var(--color-burgundy)]'
+                    : 'text-[var(--color-ink-light)] hover:bg-[var(--color-parchment-dark)]'
                   }
                 `}
               >
-                <span
+                <div
                   className={`
-                    font-display font-semibold text-sm tracking-wide
-                    transition-colors duration-200
-                    ${isSelected ? 'text-white' : 'text-[var(--color-ink-light)] group-hover:text-[var(--color-burgundy)]'}
+                    w-7 h-7 rounded-full flex items-center justify-center text-sm font-medium
+                    ${selectedWeek === week
+                      ? 'bg-[var(--color-burgundy)] text-white'
+                      : 'bg-[var(--color-parchment-dark)] text-[var(--color-ink-muted)]'
+                    }
                   `}
                 >
-                  {toRoman(week)}
-                </span>
-              </div>
-
-              {/* Week label */}
-              <span
-                className={`
-                  mt-2 text-xs font-medium tracking-wide uppercase
-                  transition-all duration-200
-                  ${isSelected
-                    ? 'text-[var(--color-burgundy)]'
-                    : 'text-[var(--color-ink-muted)] group-hover:text-[var(--color-ink-light)]'
-                  }
-                `}
-              >
-                Week {week}
-              </span>
-
-              {/* Selection dot */}
-              {isSelected && (
-                <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[var(--color-gold)]"></div>
-              )}
-            </button>
-          )
-        })}
-      </div>
+                  {week}
+                </div>
+                <span className="font-medium">Week {week}</span>
+                {selectedWeek === week && (
+                  <svg className="w-4 h-4 ml-auto text-[var(--color-burgundy)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M4.5 12.75l6 6 9-13.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
