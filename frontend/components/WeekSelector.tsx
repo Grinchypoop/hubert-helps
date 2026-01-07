@@ -34,7 +34,7 @@ export default function WeekSelector({ selectedWeek, onSelectWeek }: WeekSelecto
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={`
-          w-full sm:w-64 flex items-center justify-between gap-3 px-4 py-3
+          w-full flex items-center justify-between gap-3 px-4 py-3
           bg-[var(--color-cream)] border border-[var(--color-ink-muted)]/20 rounded-lg
           text-left transition-all duration-200
           hover:border-[var(--color-burgundy)]/40
@@ -60,7 +60,7 @@ export default function WeekSelector({ selectedWeek, onSelectWeek }: WeekSelecto
 
       {/* Dropdown Menu */}
       {isOpen && (
-        <div className="absolute z-[100] mt-2 w-full sm:w-64 bg-[var(--color-cream)] border border-[var(--color-ink-muted)]/20 rounded-lg shadow-xl overflow-hidden animate-scale-in">
+        <div className="absolute z-[100] mt-2 w-full bg-[var(--color-cream)] border border-[var(--color-ink-muted)]/20 rounded-lg shadow-xl overflow-hidden animate-scale-in">
           <div className="max-h-64 overflow-y-auto py-1">
             {weeks.map((week) => (
               <button

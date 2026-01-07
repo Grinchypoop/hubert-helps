@@ -202,26 +202,25 @@ export default function Home() {
                   </p>
                 </div>
 
-                {/* Week Selection */}
+                {/* Week Selection & Upload - Side by Side */}
                 <section className="mb-10 animate-fade-in-up stagger-1" style={{ opacity: 0 }}>
-                  <div className="flex items-center gap-4 mb-4">
-                    <h3 className="font-display text-lg font-medium text-[var(--color-ink)]">
-                      Select Week
-                    </h3>
-                    <div className="flex-1 h-px bg-gradient-to-r from-[var(--color-ink-muted)] to-transparent opacity-20"></div>
-                  </div>
-                  <WeekSelector selectedWeek={selectedWeek} onSelectWeek={setSelectedWeek} />
-                </section>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Select Week */}
+                    <div>
+                      <label className="block text-sm font-medium text-[var(--color-ink-muted)] mb-2">
+                        Select Week
+                      </label>
+                      <WeekSelector selectedWeek={selectedWeek} onSelectWeek={setSelectedWeek} />
+                    </div>
 
-                {/* Upload Section */}
-                <section className="mb-12 animate-fade-in-up stagger-2" style={{ opacity: 0 }}>
-                  <div className="flex items-center gap-4 mb-4">
-                    <h3 className="font-display text-lg font-medium text-[var(--color-ink)]">
-                      Add Reading
-                    </h3>
-                    <div className="flex-1 h-px bg-gradient-to-r from-[var(--color-ink-muted)] to-transparent opacity-20"></div>
+                    {/* Add Reading */}
+                    <div>
+                      <label className="block text-sm font-medium text-[var(--color-ink-muted)] mb-2">
+                        Add Reading
+                      </label>
+                      <FileUpload week={selectedWeek} onUploadComplete={fetchReadings} />
+                    </div>
                   </div>
-                  <FileUpload week={selectedWeek} onUploadComplete={fetchReadings} />
                 </section>
 
                 {/* Readings Display */}
