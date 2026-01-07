@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 interface Evidence {
   text: string
@@ -16,6 +16,13 @@ interface Argument {
 interface KeyTerm {
   term: string
   definition: string
+}
+
+interface Highlight {
+  id: string
+  text: string
+  note: string
+  color: string
 }
 
 interface Reading {
@@ -44,6 +51,87 @@ export default function ReadingCard({ reading, onDelete }: ReadingCardProps) {
   const [expandedArgs, setExpandedArgs] = useState<Set<number>>(new Set())
   const [showKeyTerms, setShowKeyTerms] = useState(false)
 
+  // Highlight and notes state
+  const [highlights, setHighlights] = useState<Highlight[]>([])
+  const [activeNote, setActiveNote] = useState<{id: string, x: number, y: number} | null>(null)
+  const [noteText, setNoteText] = useState('')
+  const [selectedText, setSelectedText] = useState('')
+  const [showNotePopup, setShowNotePopup] = useState<{x: number, y: number} | null>(null)
+
+  const contentRef = useRef<HTMLDivElement>(null)
+  const noteInputRef = useRef<HTMLTextAreaElement>(null)
+
+  // Load highlights from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem(`highlights-${reading.id}`)
+    if (saved) {
+      setHighlights(JSON.parse(saved))
+    }
+  }, [reading.id])
+
+  // Save highlights to localStorage
+  useEffect(() => {
+    if (highlights.length > 0) {
+      localStorage.setItem(`highlights-${reading.id}`, JSON.stringify(highlights))
+    }
+  }, [highlights, reading.id])
+
+  // Handle text selection
+  const handleMouseUp = (e: React.MouseEvent) => {
+    const selection = window.getSelection()
+    const text = selection?.toString().trim()
+
+    if (text && text.length > 0 && contentRef.current?.contains(selection?.anchorNode || null)) {
+      setSelectedText(text)
+      const rect = selection!.getRangeAt(0).getBoundingClientRect()
+      setShowNotePopup({
+        x: rect.left + rect.width / 2,
+        y: rect.bottom + 10
+      })
+    }
+  }
+
+  const handleAddHighlight = () => {
+    if (selectedText) {
+      const newHighlight: Highlight = {
+        id: Date.now().toString(),
+        text: selectedText,
+        note: '',
+        color: '#fef08a' // yellow-200
+      }
+      setHighlights([...highlights, newHighlight])
+      setActiveNote({ id: newHighlight.id, x: showNotePopup!.x, y: showNotePopup!.y })
+      setNoteText('')
+      setShowNotePopup(null)
+      window.getSelection()?.removeAllRanges()
+    }
+  }
+
+  const handleSaveNote = () => {
+    if (activeNote) {
+      setHighlights(highlights.map(h =>
+        h.id === activeNote.id ? { ...h, note: noteText } : h
+      ))
+      setActiveNote(null)
+      setNoteText('')
+    }
+  }
+
+  const handleDeleteHighlight = (id: string) => {
+    setHighlights(highlights.filter(h => h.id !== id))
+    setActiveNote(null)
+  }
+
+  const handleClickOutside = (e: React.MouseEvent) => {
+    if (activeNote && noteInputRef.current && !noteInputRef.current.contains(e.target as Node)) {
+      handleSaveNote()
+    }
+    if (showNotePopup) {
+      setShowNotePopup(null)
+      setSelectedText('')
+    }
+  }
+
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation()
     if (confirmDelete) {
@@ -65,8 +153,37 @@ export default function ReadingCard({ reading, onDelete }: ReadingCardProps) {
     setExpandedArgs(newExpanded)
   }
 
+  // Function to render text with highlights
+  const renderWithHighlights = (text: string) => {
+    let result = text
+    highlights.forEach(h => {
+      if (text.includes(h.text)) {
+        result = result.replace(
+          h.text,
+          `<mark class="highlight-mark" data-id="${h.id}" style="background-color: ${h.color}; padding: 2px 0; cursor: pointer;">${h.text}</mark>`
+        )
+      }
+    })
+    return result
+  }
+
+  const handleHighlightClick = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement
+    if (target.classList.contains('highlight-mark')) {
+      const id = target.getAttribute('data-id')
+      if (id) {
+        const highlight = highlights.find(h => h.id === id)
+        if (highlight) {
+          const rect = target.getBoundingClientRect()
+          setActiveNote({ id, x: rect.left + rect.width / 2, y: rect.bottom + 10 })
+          setNoteText(highlight.note)
+        }
+      }
+    }
+  }
+
   return (
-    <div className="card-paper rounded-xl overflow-hidden">
+    <div className="card-paper rounded-xl overflow-hidden relative" onClick={handleClickOutside}>
       {/* Collapsed Header - Always visible */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
@@ -86,6 +203,14 @@ export default function ReadingCard({ reading, onDelete }: ReadingCardProps) {
             <p className="text-xs text-[var(--color-ink-muted)] mt-0.5">
               {reading.author && <span>{reading.author} • </span>}
               {reading.filename}
+              {highlights.length > 0 && (
+                <span className="ml-2 inline-flex items-center gap-1 text-amber-600">
+                  <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+                  </svg>
+                  {highlights.length} note{highlights.length > 1 ? 's' : ''}
+                </span>
+              )}
             </p>
           </div>
         </div>
@@ -116,7 +241,19 @@ export default function ReadingCard({ reading, onDelete }: ReadingCardProps) {
       {/* Expanded Content */}
       {isExpanded && (
         <div className="border-t border-[var(--color-ink-muted)]/10 animate-fade-in">
-          <div className="p-5 space-y-6">
+          <div
+            ref={contentRef}
+            className="p-5 space-y-6"
+            onMouseUp={handleMouseUp}
+            onClick={handleHighlightClick}
+          >
+            {/* Highlight instruction */}
+            <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-700 flex items-center gap-2">
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path d="M9.53 16.122a3 3 0 00-5.78 1.128 2.25 2.25 0 01-2.4 2.245 4.5 4.5 0 008.4-2.245c0-.399-.078-.78-.22-1.128zm0 0a15.998 15.998 0 003.388-1.62m-5.043-.025a15.994 15.994 0 011.622-3.395m3.42 3.42a15.995 15.995 0 004.764-4.648l3.876-5.814a1.151 1.151 0 00-1.597-1.597L14.146 6.32a15.996 15.996 0 00-4.649 4.763m3.42 3.42a6.776 6.776 0 00-3.42-3.42" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              <span>Highlight any text to add notes. Click on yellow highlights to view/edit notes.</span>
+            </div>
 
             {/* Key Terms Section */}
             {reading.key_terms && reading.key_terms.length > 0 && (
@@ -143,7 +280,10 @@ export default function ReadingCard({ reading, onDelete }: ReadingCardProps) {
                     {reading.key_terms.map((term, i) => (
                       <div key={i} className="bg-white rounded-lg p-3">
                         <span className="font-semibold text-amber-900">{term.term}:</span>
-                        <span className="text-[var(--color-ink-light)] ml-2">{term.definition}</span>
+                        <span
+                          className="text-[var(--color-ink-light)] ml-2"
+                          dangerouslySetInnerHTML={{ __html: renderWithHighlights(term.definition) }}
+                        />
                       </div>
                     ))}
                   </div>
@@ -155,7 +295,10 @@ export default function ReadingCard({ reading, onDelete }: ReadingCardProps) {
             <div className="flex flex-col items-center">
               <div className="bg-[var(--color-burgundy)] text-white px-6 py-5 rounded-xl max-w-3xl text-center shadow-lg">
                 <div className="text-xs uppercase tracking-wider opacity-80 mb-3">Main Thesis</div>
-                <p className="text-sm leading-relaxed">{reading.thesis}</p>
+                <p
+                  className="text-sm leading-relaxed [&_mark]:bg-yellow-300 [&_mark]:text-[var(--color-ink)]"
+                  dangerouslySetInnerHTML={{ __html: renderWithHighlights(reading.thesis) }}
+                />
               </div>
 
               {reading.arguments && reading.arguments.length > 0 && (
@@ -203,7 +346,10 @@ export default function ReadingCard({ reading, onDelete }: ReadingCardProps) {
                         </div>
 
                         <div className="px-4 py-3">
-                          <p className="text-sm text-[var(--color-ink)] leading-relaxed">{arg.argument}</p>
+                          <p
+                            className="text-sm text-[var(--color-ink)] leading-relaxed"
+                            dangerouslySetInnerHTML={{ __html: renderWithHighlights(arg.argument) }}
+                          />
                         </div>
                       </div>
 
@@ -223,11 +369,15 @@ export default function ReadingCard({ reading, onDelete }: ReadingCardProps) {
                                 key={evIndex}
                                 className="w-68 bg-[var(--color-sage)]/10 border border-[var(--color-sage)]/30 rounded-lg px-4 py-3"
                               >
-                                <p className="text-sm text-[var(--color-ink)] leading-relaxed italic">"{ev.text}"</p>
+                                <p
+                                  className="text-sm text-[var(--color-ink)] leading-relaxed italic"
+                                  dangerouslySetInnerHTML={{ __html: `"${renderWithHighlights(ev.text)}"` }}
+                                />
                                 {ev.explanation && (
-                                  <p className="text-xs text-[var(--color-ink-light)] mt-2 leading-relaxed">
-                                    → {ev.explanation}
-                                  </p>
+                                  <p
+                                    className="text-xs text-[var(--color-ink-light)] mt-2 leading-relaxed"
+                                    dangerouslySetInnerHTML={{ __html: `→ ${renderWithHighlights(ev.explanation)}` }}
+                                  />
                                 )}
                                 <div className="mt-2 flex justify-end">
                                   <span className="text-xs font-medium text-[var(--color-sage)] bg-[var(--color-sage)]/20 px-2 py-0.5 rounded">
@@ -254,7 +404,10 @@ export default function ReadingCard({ reading, onDelete }: ReadingCardProps) {
                   </svg>
                   <span className="font-semibold text-purple-800">Why This Matters</span>
                 </div>
-                <p className="text-sm text-purple-900 leading-relaxed">{reading.significance}</p>
+                <p
+                  className="text-sm text-purple-900 leading-relaxed"
+                  dangerouslySetInnerHTML={{ __html: renderWithHighlights(reading.significance) }}
+                />
               </div>
             )}
 
@@ -269,7 +422,10 @@ export default function ReadingCard({ reading, onDelete }: ReadingCardProps) {
                       </svg>
                       <span className="font-semibold text-blue-800">Historical Context</span>
                     </div>
-                    <p className="text-sm text-blue-900 leading-relaxed">{reading.historical_context}</p>
+                    <p
+                      className="text-sm text-blue-900 leading-relaxed"
+                      dangerouslySetInnerHTML={{ __html: renderWithHighlights(reading.historical_context) }}
+                    />
                   </div>
                 )}
                 {reading.historiography && (
@@ -280,12 +436,92 @@ export default function ReadingCard({ reading, onDelete }: ReadingCardProps) {
                       </svg>
                       <span className="font-semibold text-slate-700">Historiographical Approach</span>
                     </div>
-                    <p className="text-sm text-slate-700 leading-relaxed">{reading.historiography}</p>
+                    <p
+                      className="text-sm text-slate-700 leading-relaxed"
+                      dangerouslySetInnerHTML={{ __html: renderWithHighlights(reading.historiography) }}
+                    />
                   </div>
                 )}
               </div>
             )}
 
+            {/* Notes Summary */}
+            {highlights.length > 0 && (
+              <div className="bg-yellow-50 border border-yellow-300 rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <svg className="w-5 h-5 text-yellow-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <path d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  <span className="font-semibold text-yellow-800">Your Notes ({highlights.length})</span>
+                </div>
+                <div className="space-y-2">
+                  {highlights.map(h => (
+                    <div key={h.id} className="bg-white rounded-lg p-3 border border-yellow-200">
+                      <p className="text-sm text-[var(--color-ink)] italic bg-yellow-100 px-1 inline">"{h.text}"</p>
+                      {h.note && (
+                        <p className="text-sm text-[var(--color-ink-light)] mt-2">→ {h.note}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+          </div>
+        </div>
+      )}
+
+      {/* Add Note Popup - appears when text is selected */}
+      {showNotePopup && (
+        <div
+          className="fixed z-50 transform -translate-x-1/2 animate-fade-in"
+          style={{ left: showNotePopup.x, top: showNotePopup.y }}
+        >
+          <button
+            onClick={(e) => { e.stopPropagation(); handleAddHighlight(); }}
+            className="bg-yellow-400 hover:bg-yellow-500 text-yellow-900 px-3 py-1.5 rounded-lg shadow-lg text-sm font-medium flex items-center gap-1.5 transition-colors"
+          >
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M12 4.5v15m7.5-7.5h-15" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            Add Note
+          </button>
+        </div>
+      )}
+
+      {/* Note Editor Popup - Post-it style */}
+      {activeNote && (
+        <div
+          className="fixed z-50 transform -translate-x-1/2 animate-fade-in"
+          style={{ left: Math.min(Math.max(activeNote.x, 150), window.innerWidth - 150), top: activeNote.y }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="bg-yellow-200 rounded-lg shadow-xl p-4 w-64 border-2 border-yellow-300" style={{ boxShadow: '4px 4px 0 rgba(0,0,0,0.1)' }}>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-semibold text-yellow-800 uppercase tracking-wide">Your Note</span>
+              <button
+                onClick={() => handleDeleteHighlight(activeNote.id)}
+                className="text-yellow-700 hover:text-red-600 transition-colors"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <path d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+            </div>
+            <textarea
+              ref={noteInputRef}
+              value={noteText}
+              onChange={(e) => setNoteText(e.target.value)}
+              placeholder="Write your note here..."
+              autoFocus
+              className="w-full h-24 bg-yellow-100 border border-yellow-300 rounded-md p-2 text-sm text-[var(--color-ink)] placeholder:text-yellow-600 resize-none focus:outline-none focus:ring-2 focus:ring-yellow-400"
+            />
+            <button
+              onClick={handleSaveNote}
+              className="mt-2 w-full bg-yellow-400 hover:bg-yellow-500 text-yellow-900 py-1.5 rounded-md text-sm font-medium transition-colors"
+            >
+              Save Note
+            </button>
           </div>
         </div>
       )}
