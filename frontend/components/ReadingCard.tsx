@@ -55,8 +55,6 @@ export default function ReadingCard({ reading, onDelete }: ReadingCardProps) {
   const [highlights, setHighlights] = useState<Highlight[]>([])
   const [activeNote, setActiveNote] = useState<{id: string, x: number, y: number} | null>(null)
   const [noteText, setNoteText] = useState('')
-  const [selectedText, setSelectedText] = useState('')
-  const [showNotePopup, setShowNotePopup] = useState<{x: number, y: number} | null>(null)
 
   const contentRef = useRef<HTMLDivElement>(null)
   const noteInputRef = useRef<HTMLTextAreaElement>(null)
@@ -76,33 +74,36 @@ export default function ReadingCard({ reading, onDelete }: ReadingCardProps) {
     }
   }, [highlights, reading.id])
 
-  // Handle text selection
+  // Handle text selection - automatically create highlight and show note popup
   const handleMouseUp = (e: React.MouseEvent) => {
+    // Don't create highlight if clicking on existing highlight
+    if ((e.target as HTMLElement).classList.contains('highlight-mark')) {
+      return
+    }
+
     const selection = window.getSelection()
     const text = selection?.toString().trim()
 
     if (text && text.length > 0 && contentRef.current?.contains(selection?.anchorNode || null)) {
-      setSelectedText(text)
       const rect = selection!.getRangeAt(0).getBoundingClientRect()
-      setShowNotePopup({
-        x: rect.left + rect.width / 2,
-        y: rect.bottom + 10
-      })
-    }
-  }
 
-  const handleAddHighlight = () => {
-    if (selectedText) {
+      // Automatically create the highlight
       const newHighlight: Highlight = {
         id: Date.now().toString(),
-        text: selectedText,
+        text: text,
         note: '',
         color: '#fef08a' // yellow-200
       }
-      setHighlights([...highlights, newHighlight])
-      setActiveNote({ id: newHighlight.id, x: showNotePopup!.x, y: showNotePopup!.y })
+      setHighlights(prev => [...prev, newHighlight])
+
+      // Show note popup immediately
+      setActiveNote({
+        id: newHighlight.id,
+        x: rect.left + rect.width / 2,
+        y: rect.bottom + 10
+      })
       setNoteText('')
-      setShowNotePopup(null)
+
       window.getSelection()?.removeAllRanges()
     }
   }
@@ -125,10 +126,6 @@ export default function ReadingCard({ reading, onDelete }: ReadingCardProps) {
   const handleClickOutside = (e: React.MouseEvent) => {
     if (activeNote && noteInputRef.current && !noteInputRef.current.contains(e.target as Node)) {
       handleSaveNote()
-    }
-    if (showNotePopup) {
-      setShowNotePopup(null)
-      setSelectedText('')
     }
   }
 
@@ -252,7 +249,7 @@ export default function ReadingCard({ reading, onDelete }: ReadingCardProps) {
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                 <path d="M9.53 16.122a3 3 0 00-5.78 1.128 2.25 2.25 0 01-2.4 2.245 4.5 4.5 0 008.4-2.245c0-.399-.078-.78-.22-1.128zm0 0a15.998 15.998 0 003.388-1.62m-5.043-.025a15.994 15.994 0 011.622-3.395m3.42 3.42a15.995 15.995 0 004.764-4.648l3.876-5.814a1.151 1.151 0 00-1.597-1.597L14.146 6.32a15.996 15.996 0 00-4.649 4.763m3.42 3.42a6.776 6.776 0 00-3.42-3.42" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
-              <span>Highlight any text to add notes. Click on yellow highlights to view/edit notes.</span>
+              <span>Select any text to highlight & add notes. Click highlights to edit.</span>
             </div>
 
             {/* Key Terms Section */}
@@ -468,24 +465,6 @@ export default function ReadingCard({ reading, onDelete }: ReadingCardProps) {
             )}
 
           </div>
-        </div>
-      )}
-
-      {/* Add Note Popup - appears when text is selected */}
-      {showNotePopup && (
-        <div
-          className="fixed z-50 transform -translate-x-1/2 animate-fade-in"
-          style={{ left: showNotePopup.x, top: showNotePopup.y }}
-        >
-          <button
-            onClick={(e) => { e.stopPropagation(); handleAddHighlight(); }}
-            className="bg-yellow-400 hover:bg-yellow-500 text-yellow-900 px-3 py-1.5 rounded-lg shadow-lg text-sm font-medium flex items-center gap-1.5 transition-colors"
-          >
-            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M12 4.5v15m7.5-7.5h-15" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            Add Note
-          </button>
         </div>
       )}
 
