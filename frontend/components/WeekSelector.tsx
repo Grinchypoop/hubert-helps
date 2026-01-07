@@ -29,7 +29,7 @@ export default function WeekSelector({ selectedWeek, onSelectWeek }: WeekSelecto
   }
 
   return (
-    <div className="relative" ref={dropdownRef}>
+    <div className="relative z-50" ref={dropdownRef}>
       {/* Dropdown Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
@@ -60,7 +60,7 @@ export default function WeekSelector({ selectedWeek, onSelectWeek }: WeekSelecto
 
       {/* Dropdown Menu */}
       {isOpen && (
-        <div className="absolute z-50 mt-2 w-full sm:w-64 bg-[var(--color-cream)] border border-[var(--color-ink-muted)]/20 rounded-lg shadow-lg overflow-hidden animate-scale-in">
+        <div className="absolute z-[100] mt-2 w-full sm:w-64 bg-[var(--color-cream)] border border-[var(--color-ink-muted)]/20 rounded-lg shadow-xl overflow-hidden animate-scale-in">
           <div className="max-h-64 overflow-y-auto py-1">
             {weeks.map((week) => (
               <button
