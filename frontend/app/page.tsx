@@ -223,21 +223,9 @@ export default function Home() {
                   </div>
                 </section>
 
-                {/* Readings Display */}
-                <section className="animate-fade-in-up stagger-3 relative z-10" style={{ opacity: 0 }}>
-                  <div className="flex items-center justify-between gap-4 mb-6">
-                    <div className="flex items-center gap-4">
-                      <h3 className="font-display text-lg font-medium text-[var(--color-ink)]">
-                        Week {selectedWeek} Readings
-                      </h3>
-                      <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-[var(--color-burgundy)] text-white text-sm font-medium">
-                        {readings.length}
-                      </span>
-                    </div>
-                    <div className="flex-1 h-px bg-gradient-to-r from-transparent via-[var(--color-ink-muted)] to-transparent opacity-20"></div>
-                  </div>
-
-                  {loading ? (
+                {/* Readings Display - Only show when there are readings */}
+                {loading ? (
+                  <section className="animate-fade-in-up relative z-10">
                     <div className="space-y-4">
                       {[1, 2].map((i) => (
                         <div key={i} className="card-paper rounded-lg p-8">
@@ -247,19 +235,9 @@ export default function Home() {
                         </div>
                       ))}
                     </div>
-                  ) : readings.length === 0 ? (
-                    <div className="card-paper rounded-lg p-12 text-center">
-                      <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[var(--color-parchment-dark)] mb-4">
-                        <svg className="w-8 h-8 text-[var(--color-ink-muted)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                          <path d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                      </div>
-                      <h3 className="font-display text-xl text-[var(--color-ink)] mb-2">No readings yet</h3>
-                      <p className="text-[var(--color-ink-muted)] max-w-sm mx-auto">
-                        Upload a PDF above to analyze your first reading for Week {selectedWeek}
-                      </p>
-                    </div>
-                  ) : (
+                  </section>
+                ) : readings.length > 0 && (
+                  <section className="animate-fade-in-up relative z-10">
                     <div className="space-y-6">
                       {readings.map((reading, index) => (
                         <div
@@ -271,8 +249,8 @@ export default function Home() {
                         </div>
                       ))}
                     </div>
-                  )}
-                </section>
+                  </section>
+                )}
               </>
             )}
 
