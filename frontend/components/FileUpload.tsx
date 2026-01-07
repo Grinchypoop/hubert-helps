@@ -11,52 +11,64 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
 export default function FileUpload({ week, onUploadComplete }: FileUploadProps) {
   const [uploading, setUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState<{current: number, total: number} | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [dragOver, setDragOver] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const handleUpload = async (file: File) => {
-    if (!file.name.toLowerCase().endsWith('.pdf')) {
-      setError('Please upload a PDF file')
+  const handleUpload = async (files: FileList) => {
+    const pdfFiles = Array.from(files).filter(f => f.name.toLowerCase().endsWith('.pdf'))
+
+    if (pdfFiles.length === 0) {
+      setError('Please upload PDF files')
       return
     }
 
     setUploading(true)
     setError(null)
+    setUploadProgress({ current: 0, total: pdfFiles.length })
 
-    const formData = new FormData()
-    formData.append('file', file)
+    for (let i = 0; i < pdfFiles.length; i++) {
+      const file = pdfFiles[i]
+      setUploadProgress({ current: i + 1, total: pdfFiles.length })
 
-    try {
-      const response = await fetch(`${API_URL}/api/upload?week=${week}`, {
-        method: 'POST',
-        body: formData,
-      })
+      const formData = new FormData()
+      formData.append('file', file)
 
-      if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.detail || 'Upload failed')
+      try {
+        const response = await fetch(`${API_URL}/api/upload?week=${week}`, {
+          method: 'POST',
+          body: formData,
+        })
+
+        if (!response.ok) {
+          const data = await response.json()
+          throw new Error(data.detail || `Upload failed for ${file.name}`)
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Upload failed')
+        setUploading(false)
+        setUploadProgress(null)
+        return
       }
-
-      onUploadComplete()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Upload failed')
-    } finally {
-      setUploading(false)
     }
+
+    setUploading(false)
+    setUploadProgress(null)
+    onUploadComplete()
   }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) handleUpload(file)
+    const files = e.target.files
+    if (files && files.length > 0) handleUpload(files)
     e.target.value = ''
   }
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault()
     setDragOver(false)
-    const file = e.dataTransfer.files[0]
-    if (file) handleUpload(file)
+    const files = e.dataTransfer.files
+    if (files.length > 0) handleUpload(files)
   }
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -75,6 +87,7 @@ export default function FileUpload({ week, onUploadComplete }: FileUploadProps) 
         ref={fileInputRef}
         type="file"
         accept=".pdf"
+        multiple
         onChange={handleFileChange}
         className="hidden"
       />
@@ -113,7 +126,11 @@ export default function FileUpload({ week, onUploadComplete }: FileUploadProps) 
             )}
           </div>
           <span className="font-medium text-[var(--color-ink)]">
-            {uploading ? 'Analyzing...' : dragOver ? 'Drop to upload' : 'Upload or drop PDF'}
+            {uploading && uploadProgress
+              ? `Analyzing ${uploadProgress.current}/${uploadProgress.total}...`
+              : dragOver
+                ? 'Drop to upload'
+                : 'Upload PDFs (bulk supported)'}
           </span>
         </div>
         <svg
