@@ -130,29 +130,6 @@ export default function Home() {
       <main className="flex-1 min-h-screen">
         <div className="py-8 lg:py-12 px-4 sm:px-6 lg:px-8 pl-16 lg:pl-8">
           <div className="max-w-4xl mx-auto">
-            {/* Header */}
-            <header className="text-center mb-12 animate-fade-in-up">
-              <div className="inline-flex items-center gap-3 mb-4">
-                <span className="w-12 h-px bg-gradient-to-r from-transparent via-[var(--color-gold)] to-transparent"></span>
-                <svg className="w-6 h-6 text-[var(--color-gold)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                  <path d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-                <span className="w-12 h-px bg-gradient-to-r from-transparent via-[var(--color-gold)] to-transparent"></span>
-              </div>
-
-              <h1 className="font-display text-4xl sm:text-5xl font-semibold text-[var(--color-ink)] tracking-tight mb-3">
-                Study with Hubert
-              </h1>
-
-              <p className="font-body text-[var(--color-ink-muted)] text-lg max-w-md mx-auto">
-                Transform your readings into structured arguments, evidence, and historical insights
-              </p>
-
-              <div className="mt-6 flex justify-center">
-                <div className="w-24 h-px bg-gradient-to-r from-transparent via-[var(--color-ink-muted)] to-transparent opacity-30"></div>
-              </div>
-            </header>
-
             {/* No Module Selected State */}
             {!selectedModule ? (
               <div className="card-paper rounded-xl p-12 text-center animate-fade-in-up">
