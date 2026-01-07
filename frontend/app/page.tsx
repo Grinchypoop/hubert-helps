@@ -127,8 +127,8 @@ export default function Home() {
       />
 
       {/* Main Content */}
-      <main className="flex-1 min-h-screen">
-        <div className="py-8 lg:py-12 px-4 sm:px-6 lg:px-8 pl-16 lg:pl-8">
+      <main className={`flex-1 min-h-screen transition-all duration-300 ${sidebarOpen ? 'ml-72' : 'ml-0'}`}>
+        <div className="py-8 lg:py-12 px-4 sm:px-6 lg:px-8 pl-16">
           <div className="max-w-4xl mx-auto">
             {/* No Module Selected State */}
             {!selectedModule ? (
