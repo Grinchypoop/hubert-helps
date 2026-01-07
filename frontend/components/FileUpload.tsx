@@ -12,6 +12,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 export default function FileUpload({ week, onUploadComplete }: FileUploadProps) {
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [dragOver, setDragOver] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleUpload = async (file: File) => {
@@ -48,8 +49,24 @@ export default function FileUpload({ week, onUploadComplete }: FileUploadProps) 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) handleUpload(file)
-    // Reset input so same file can be selected again
     e.target.value = ''
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setDragOver(false)
+    const file = e.dataTransfer.files[0]
+    if (file) handleUpload(file)
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    setDragOver(true)
+  }
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault()
+    setDragOver(false)
   }
 
   return (
@@ -64,19 +81,25 @@ export default function FileUpload({ week, onUploadComplete }: FileUploadProps) 
 
       <button
         onClick={() => fileInputRef.current?.click()}
+        onDrop={handleDrop}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
         disabled={uploading}
         className={`
           w-full flex items-center justify-between gap-3 px-4 py-3
-          bg-[var(--color-cream)] border border-[var(--color-ink-muted)]/20 rounded-lg
+          bg-[var(--color-cream)] border rounded-lg
           text-left transition-all duration-200
-          hover:border-[var(--color-burgundy)]/40 hover:bg-[var(--color-burgundy)]/5
           disabled:opacity-60 disabled:cursor-not-allowed
+          ${dragOver
+            ? 'border-[var(--color-burgundy)] border-2 bg-[var(--color-burgundy)]/5 scale-[1.02]'
+            : 'border-[var(--color-ink-muted)]/20 hover:border-[var(--color-burgundy)]/40 hover:bg-[var(--color-burgundy)]/5'
+          }
         `}
       >
         <div className="flex items-center gap-3">
           <div className={`
-            w-8 h-8 rounded-full flex items-center justify-center
-            ${uploading ? 'bg-[var(--color-gold)]' : 'bg-[var(--color-sage)]'}
+            w-8 h-8 rounded-full flex items-center justify-center transition-colors
+            ${dragOver ? 'bg-[var(--color-burgundy)]' : uploading ? 'bg-[var(--color-gold)]' : 'bg-[var(--color-sage)]'}
           `}>
             {uploading ? (
               <svg className="w-4 h-4 text-white animate-spin" viewBox="0 0 24 24" fill="none">
@@ -90,11 +113,11 @@ export default function FileUpload({ week, onUploadComplete }: FileUploadProps) 
             )}
           </div>
           <span className="font-medium text-[var(--color-ink)]">
-            {uploading ? 'Analyzing...' : 'Upload PDF'}
+            {uploading ? 'Analyzing...' : dragOver ? 'Drop to upload' : 'Upload or drop PDF'}
           </span>
         </div>
         <svg
-          className="w-5 h-5 text-[var(--color-ink-muted)]"
+          className={`w-5 h-5 transition-transform ${dragOver ? 'text-[var(--color-burgundy)] -translate-y-1' : 'text-[var(--color-ink-muted)]'}`}
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
@@ -104,7 +127,6 @@ export default function FileUpload({ week, onUploadComplete }: FileUploadProps) 
         </svg>
       </button>
 
-      {/* Error message */}
       {error && (
         <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-50 border border-red-200 animate-fade-in">
           <svg className="w-4 h-4 text-red-500 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
