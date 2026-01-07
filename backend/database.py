@@ -21,10 +21,13 @@ def init_db():
             week_number INTEGER NOT NULL,
             title TEXT NOT NULL,
             filename TEXT NOT NULL,
+            author TEXT,
             thesis TEXT,
+            key_terms TEXT,
             arguments TEXT,
             historical_context TEXT,
             historiography TEXT,
+            significance TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
@@ -37,17 +40,20 @@ def save_reading(week_number: int, filename: str, analysis: dict) -> int:
     cursor = conn.cursor()
     cursor.execute("""
         INSERT INTO readings (
-            week_number, title, filename, thesis,
-            arguments, historical_context, historiography
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            week_number, title, filename, author, thesis,
+            key_terms, arguments, historical_context, historiography, significance
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         week_number,
         analysis.get("title", filename),
         filename,
+        analysis.get("author", ""),
         analysis.get("thesis"),
+        json.dumps(analysis.get("key_terms", [])),
         json.dumps(analysis.get("arguments", [])),
         analysis.get("historical_context"),
-        analysis.get("historiography")
+        analysis.get("historiography"),
+        analysis.get("significance", "")
     ))
     conn.commit()
     reading_id = cursor.lastrowid

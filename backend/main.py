@@ -72,6 +72,7 @@ def list_readings(week: int = Query(None, ge=1, le=13)):
     # Parse JSON fields
     for reading in readings:
         reading["arguments"] = json.loads(reading["arguments"] or "[]")
+        reading["key_terms"] = json.loads(reading["key_terms"] or "[]") if reading.get("key_terms") else []
 
     return {"readings": readings}
 
@@ -84,6 +85,7 @@ def get_reading(reading_id: int):
         raise HTTPException(status_code=404, detail="Reading not found")
 
     reading["arguments"] = json.loads(reading["arguments"] or "[]")
+    reading["key_terms"] = json.loads(reading["key_terms"] or "[]") if reading.get("key_terms") else []
 
     return reading
 
