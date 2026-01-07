@@ -65,7 +65,7 @@ export default function Home() {
           </div>
 
           <h1 className="font-display text-4xl sm:text-5xl font-semibold text-[var(--color-ink)] tracking-tight mb-3">
-            History Reading Analyzer
+            Study with Hubert
           </h1>
 
           <p className="font-body text-[var(--color-ink-muted)] text-lg max-w-md mx-auto">
@@ -153,7 +153,7 @@ export default function Home() {
         {/* Footer */}
         <footer className="mt-16 pt-8 border-t border-[var(--color-ink-muted)]/10 text-center">
           <p className="text-sm text-[var(--color-ink-muted)]">
-            <span className="font-display italic">Hubert Helps</span> — Scholarly Analysis Made Simple
+            <span className="font-display italic">Study with Hubert</span> — Your Academic Companion
           </p>
         </footer>
       </div>

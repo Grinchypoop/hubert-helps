@@ -2,8 +2,8 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'History Reading Analyzer',
-  description: 'Break down your history readings into key arguments and evidence',
+  title: 'Study with Hubert',
+  description: 'Transform your readings into structured arguments, evidence, and insights',
 }
 
 export default function RootLayout({
