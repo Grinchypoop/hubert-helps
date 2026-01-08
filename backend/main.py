@@ -1,7 +1,6 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-import json
 
 from database import save_reading, get_readings_by_week, get_all_readings, get_reading_by_id, delete_reading, save_note, get_notes_for_reading, delete_note
 from pdf_processor import extract_text_from_pdf
@@ -74,11 +73,6 @@ def list_readings(week: int = Query(None, ge=1, le=13)):
     else:
         readings = get_all_readings()
 
-    # Parse JSON fields
-    for reading in readings:
-        reading["arguments"] = json.loads(reading["arguments"] or "[]")
-        reading["key_terms"] = json.loads(reading["key_terms"] or "[]") if reading.get("key_terms") else []
-
     return {"readings": readings}
 
 
@@ -88,9 +82,6 @@ def get_reading(reading_id: int):
     reading = get_reading_by_id(reading_id)
     if not reading:
         raise HTTPException(status_code=404, detail="Reading not found")
-
-    reading["arguments"] = json.loads(reading["arguments"] or "[]")
-    reading["key_terms"] = json.loads(reading["key_terms"] or "[]") if reading.get("key_terms") else []
 
     return reading
 

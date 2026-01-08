@@ -1,157 +1,74 @@
-import sqlite3
-import json
-from datetime import datetime
-from pathlib import Path
+import os
+from supabase import create_client, Client
+from dotenv import load_dotenv
 
-DB_PATH = Path(__file__).parent / "readings.db"
+load_dotenv()
 
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
-def get_connection():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
-
-
-def init_db():
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS readings (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            week_number INTEGER NOT NULL,
-            title TEXT NOT NULL,
-            filename TEXT NOT NULL,
-            author TEXT,
-            thesis TEXT,
-            key_terms TEXT,
-            arguments TEXT,
-            historical_context TEXT,
-            historiography TEXT,
-            significance TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS notes (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            reading_id INTEGER NOT NULL,
-            argument_index INTEGER NOT NULL,
-            note_text TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (reading_id) REFERENCES readings(id) ON DELETE CASCADE,
-            UNIQUE(reading_id, argument_index)
-        )
-    """)
-    conn.commit()
-    conn.close()
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 
 def save_reading(week_number: int, filename: str, analysis: dict) -> int:
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute("""
-        INSERT INTO readings (
-            week_number, title, filename, author, thesis,
-            key_terms, arguments, historical_context, historiography, significance
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """, (
-        week_number,
-        analysis.get("title", filename),
-        filename,
-        analysis.get("author", ""),
-        analysis.get("thesis"),
-        json.dumps(analysis.get("key_terms", [])),
-        json.dumps(analysis.get("arguments", [])),
-        analysis.get("historical_context"),
-        analysis.get("historiography"),
-        analysis.get("significance", "")
-    ))
-    conn.commit()
-    reading_id = cursor.lastrowid
-    conn.close()
-    return reading_id
+    data = {
+        "week_number": week_number,
+        "title": analysis.get("title", filename),
+        "filename": filename,
+        "author": analysis.get("author", ""),
+        "thesis": analysis.get("thesis"),
+        "key_terms": analysis.get("key_terms", []),
+        "arguments": analysis.get("arguments", []),
+        "historical_context": analysis.get("historical_context"),
+        "historiography": analysis.get("historiography"),
+        "significance": analysis.get("significance", "")
+    }
+    result = supabase.table("readings").insert(data).execute()
+    return result.data[0]["id"]
 
 
 def get_readings_by_week(week_number: int) -> list:
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute(
-        "SELECT * FROM readings WHERE week_number = ? ORDER BY created_at DESC",
-        (week_number,)
-    )
-    rows = cursor.fetchall()
-    conn.close()
-    return [dict(row) for row in rows]
+    result = supabase.table("readings").select("*").eq("week_number", week_number).order("created_at", desc=True).execute()
+    return result.data
 
 
 def get_all_readings() -> list:
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM readings ORDER BY week_number, created_at DESC")
-    rows = cursor.fetchall()
-    conn.close()
-    return [dict(row) for row in rows]
+    result = supabase.table("readings").select("*").order("week_number").order("created_at", desc=True).execute()
+    return result.data
 
 
 def get_reading_by_id(reading_id: int) -> dict | None:
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM readings WHERE id = ?", (reading_id,))
-    row = cursor.fetchone()
-    conn.close()
-    return dict(row) if row else None
+    result = supabase.table("readings").select("*").eq("id", reading_id).execute()
+    return result.data[0] if result.data else None
 
 
 def delete_reading(reading_id: int) -> bool:
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute("DELETE FROM readings WHERE id = ?", (reading_id,))
-    conn.commit()
-    deleted = cursor.rowcount > 0
-    conn.close()
-    return deleted
+    result = supabase.table("readings").delete().eq("id", reading_id).execute()
+    return len(result.data) > 0
 
 
 def save_note(reading_id: int, argument_index: int, note_text: str) -> dict:
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute("""
-        INSERT INTO notes (reading_id, argument_index, note_text)
-        VALUES (?, ?, ?)
-        ON CONFLICT(reading_id, argument_index) DO UPDATE SET
-            note_text = excluded.note_text,
-            updated_at = CURRENT_TIMESTAMP
-    """, (reading_id, argument_index, note_text))
-    conn.commit()
-    conn.close()
+    data = {
+        "reading_id": reading_id,
+        "argument_index": argument_index,
+        "note_text": note_text
+    }
+    # Try to update first, then insert if not exists
+    existing = supabase.table("notes").select("id").eq("reading_id", reading_id).eq("argument_index", argument_index).execute()
+
+    if existing.data:
+        supabase.table("notes").update({"note_text": note_text}).eq("id", existing.data[0]["id"]).execute()
+    else:
+        supabase.table("notes").insert(data).execute()
+
     return {"reading_id": reading_id, "argument_index": argument_index, "note_text": note_text}
 
 
 def get_notes_for_reading(reading_id: int) -> dict:
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute(
-        "SELECT argument_index, note_text FROM notes WHERE reading_id = ?",
-        (reading_id,)
-    )
-    rows = cursor.fetchall()
-    conn.close()
-    return {row["argument_index"]: row["note_text"] for row in rows}
+    result = supabase.table("notes").select("argument_index, note_text").eq("reading_id", reading_id).execute()
+    return {row["argument_index"]: row["note_text"] for row in result.data}
 
 
 def delete_note(reading_id: int, argument_index: int) -> bool:
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute(
-        "DELETE FROM notes WHERE reading_id = ? AND argument_index = ?",
-        (reading_id, argument_index)
-    )
-    conn.commit()
-    deleted = cursor.rowcount > 0
-    conn.close()
-    return deleted
-
-
-# Initialize database on module import
-init_db()
+    result = supabase.table("notes").delete().eq("reading_id", reading_id).eq("argument_index", argument_index).execute()
+    return len(result.data) > 0
