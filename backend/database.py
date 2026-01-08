@@ -31,6 +31,18 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS notes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            reading_id INTEGER NOT NULL,
+            argument_index INTEGER NOT NULL,
+            note_text TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (reading_id) REFERENCES readings(id) ON DELETE CASCADE,
+            UNIQUE(reading_id, argument_index)
+        )
+    """)
     conn.commit()
     conn.close()
 
@@ -95,6 +107,46 @@ def delete_reading(reading_id: int) -> bool:
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("DELETE FROM readings WHERE id = ?", (reading_id,))
+    conn.commit()
+    deleted = cursor.rowcount > 0
+    conn.close()
+    return deleted
+
+
+def save_note(reading_id: int, argument_index: int, note_text: str) -> dict:
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO notes (reading_id, argument_index, note_text)
+        VALUES (?, ?, ?)
+        ON CONFLICT(reading_id, argument_index) DO UPDATE SET
+            note_text = excluded.note_text,
+            updated_at = CURRENT_TIMESTAMP
+    """, (reading_id, argument_index, note_text))
+    conn.commit()
+    conn.close()
+    return {"reading_id": reading_id, "argument_index": argument_index, "note_text": note_text}
+
+
+def get_notes_for_reading(reading_id: int) -> dict:
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT argument_index, note_text FROM notes WHERE reading_id = ?",
+        (reading_id,)
+    )
+    rows = cursor.fetchall()
+    conn.close()
+    return {row["argument_index"]: row["note_text"] for row in rows}
+
+
+def delete_note(reading_id: int, argument_index: int) -> bool:
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "DELETE FROM notes WHERE reading_id = ? AND argument_index = ?",
+        (reading_id, argument_index)
+    )
     conn.commit()
     deleted = cursor.rowcount > 0
     conn.close()

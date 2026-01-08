@@ -1,6 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
 interface Evidence {
   text: string
@@ -47,27 +49,58 @@ export default function ReadingCard({ reading, onDelete }: ReadingCardProps) {
   // Argument notes state
   const [argNotes, setArgNotes] = useState<Record<number, string>>({})
   const [visibleNotes, setVisibleNotes] = useState<Set<number>>(new Set())
+  const [savingStatus, setSavingStatus] = useState<Record<number, 'saving' | 'saved' | 'error'>>({})
+  const saveTimeouts = useRef<Record<number, NodeJS.Timeout>>({})
 
-  // Load notes from localStorage
+  // Load notes from database
   useEffect(() => {
-    const saved = localStorage.getItem(`arg-notes-${reading.id}`)
-    if (saved) {
-      const parsed = JSON.parse(saved)
-      setArgNotes(parsed)
-      // Auto-show notes that have content
-      const notesWithContent = Object.entries(parsed)
-        .filter(([_, value]) => value)
-        .map(([key]) => parseInt(key))
-      setVisibleNotes(new Set(notesWithContent))
+    const fetchNotes = async () => {
+      try {
+        const response = await fetch(`${API_URL}/api/readings/${reading.id}/notes`)
+        if (response.ok) {
+          const data = await response.json()
+          const notes: Record<number, string> = {}
+          Object.entries(data.notes).forEach(([key, value]) => {
+            notes[parseInt(key)] = value as string
+          })
+          setArgNotes(notes)
+          // Auto-show notes that have content
+          const notesWithContent = Object.keys(notes).map(k => parseInt(k))
+          setVisibleNotes(new Set(notesWithContent))
+        }
+      } catch (error) {
+        console.error('Failed to fetch notes:', error)
+      }
     }
+    fetchNotes()
   }, [reading.id])
 
-  // Auto-save notes to localStorage
-  useEffect(() => {
-    if (Object.keys(argNotes).length > 0) {
-      localStorage.setItem(`arg-notes-${reading.id}`, JSON.stringify(argNotes))
+  // Save note to database with debounce
+  const saveNoteToDb = useCallback(async (index: number, noteText: string) => {
+    setSavingStatus(prev => ({ ...prev, [index]: 'saving' }))
+    try {
+      const response = await fetch(`${API_URL}/api/readings/${reading.id}/notes/${index}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ note_text: noteText })
+      })
+      if (response.ok) {
+        setSavingStatus(prev => ({ ...prev, [index]: 'saved' }))
+        setTimeout(() => {
+          setSavingStatus(prev => {
+            const newStatus = { ...prev }
+            delete newStatus[index]
+            return newStatus
+          })
+        }, 2000)
+      } else {
+        setSavingStatus(prev => ({ ...prev, [index]: 'error' }))
+      }
+    } catch (error) {
+      console.error('Failed to save note:', error)
+      setSavingStatus(prev => ({ ...prev, [index]: 'error' }))
     }
-  }, [argNotes, reading.id])
+  }, [reading.id])
 
   const toggleNoteVisibility = (index: number, e: React.MouseEvent) => {
     e.stopPropagation()
@@ -82,6 +115,14 @@ export default function ReadingCard({ reading, onDelete }: ReadingCardProps) {
 
   const updateArgNote = (index: number, value: string) => {
     setArgNotes(prev => ({ ...prev, [index]: value }))
+
+    // Debounce save to database
+    if (saveTimeouts.current[index]) {
+      clearTimeout(saveTimeouts.current[index])
+    }
+    saveTimeouts.current[index] = setTimeout(() => {
+      saveNoteToDb(index, value)
+    }, 500)
   }
 
   const handleDelete = (e: React.MouseEvent) => {
@@ -278,7 +319,17 @@ export default function ReadingCard({ reading, onDelete }: ReadingCardProps) {
                                 <path d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125" strokeLinecap="round" strokeLinejoin="round"/>
                               </svg>
                               <span className="text-xs font-medium text-sky-700">My Notes</span>
-                              <span className="text-xs text-sky-500 ml-auto">Auto-saved</span>
+                              <span className={`text-xs ml-auto ${
+                                savingStatus[index] === 'saving' ? 'text-amber-500' :
+                                savingStatus[index] === 'saved' ? 'text-green-500' :
+                                savingStatus[index] === 'error' ? 'text-red-500' :
+                                'text-sky-500'
+                              }`}>
+                                {savingStatus[index] === 'saving' ? 'Saving...' :
+                                 savingStatus[index] === 'saved' ? 'Saved!' :
+                                 savingStatus[index] === 'error' ? 'Error saving' :
+                                 'Auto-saves'}
+                              </span>
                             </div>
                             <textarea
                               value={argNotes[index] || ''}
