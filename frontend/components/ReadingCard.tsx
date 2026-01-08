@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 
 interface Evidence {
   text: string
@@ -16,13 +16,6 @@ interface Argument {
 interface KeyTerm {
   term: string
   definition: string
-}
-
-interface Highlight {
-  id: string
-  text: string
-  note: string
-  color: string
 }
 
 interface Reading {
@@ -51,82 +44,44 @@ export default function ReadingCard({ reading, onDelete }: ReadingCardProps) {
   const [expandedArgs, setExpandedArgs] = useState<Set<number>>(new Set())
   const [showKeyTerms, setShowKeyTerms] = useState(false)
 
-  // Highlight and notes state
-  const [highlights, setHighlights] = useState<Highlight[]>([])
-  const [activeNote, setActiveNote] = useState<{id: string, x: number, y: number} | null>(null)
-  const [noteText, setNoteText] = useState('')
+  // Argument notes state
+  const [argNotes, setArgNotes] = useState<Record<number, string>>({})
+  const [visibleNotes, setVisibleNotes] = useState<Set<number>>(new Set())
 
-  const contentRef = useRef<HTMLDivElement>(null)
-  const noteInputRef = useRef<HTMLTextAreaElement>(null)
-
-  // Load highlights from localStorage
+  // Load notes from localStorage
   useEffect(() => {
-    const saved = localStorage.getItem(`highlights-${reading.id}`)
+    const saved = localStorage.getItem(`arg-notes-${reading.id}`)
     if (saved) {
-      setHighlights(JSON.parse(saved))
+      const parsed = JSON.parse(saved)
+      setArgNotes(parsed)
+      // Auto-show notes that have content
+      const notesWithContent = Object.entries(parsed)
+        .filter(([_, value]) => value)
+        .map(([key]) => parseInt(key))
+      setVisibleNotes(new Set(notesWithContent))
     }
   }, [reading.id])
 
-  // Save highlights to localStorage
+  // Auto-save notes to localStorage
   useEffect(() => {
-    if (highlights.length > 0) {
-      localStorage.setItem(`highlights-${reading.id}`, JSON.stringify(highlights))
+    if (Object.keys(argNotes).length > 0) {
+      localStorage.setItem(`arg-notes-${reading.id}`, JSON.stringify(argNotes))
     }
-  }, [highlights, reading.id])
+  }, [argNotes, reading.id])
 
-  // Handle text selection - automatically create highlight and show note popup
-  const handleMouseUp = (e: React.MouseEvent) => {
-    // Don't create highlight if clicking on existing highlight
-    if ((e.target as HTMLElement).classList.contains('highlight-mark')) {
-      return
+  const toggleNoteVisibility = (index: number, e: React.MouseEvent) => {
+    e.stopPropagation()
+    const newVisible = new Set(visibleNotes)
+    if (newVisible.has(index)) {
+      newVisible.delete(index)
+    } else {
+      newVisible.add(index)
     }
-
-    const selection = window.getSelection()
-    const text = selection?.toString().trim()
-
-    if (text && text.length > 0 && contentRef.current?.contains(selection?.anchorNode || null)) {
-      const rect = selection!.getRangeAt(0).getBoundingClientRect()
-
-      // Automatically create the highlight
-      const newHighlight: Highlight = {
-        id: Date.now().toString(),
-        text: text,
-        note: '',
-        color: '#fef08a' // yellow-200
-      }
-      setHighlights(prev => [...prev, newHighlight])
-
-      // Show note popup immediately
-      setActiveNote({
-        id: newHighlight.id,
-        x: rect.left + rect.width / 2,
-        y: rect.bottom + 10
-      })
-      setNoteText('')
-
-      window.getSelection()?.removeAllRanges()
-    }
+    setVisibleNotes(newVisible)
   }
 
-  const handleSaveNote = () => {
-    if (activeNote) {
-      setHighlights(highlights.map(h =>
-        h.id === activeNote.id ? { ...h, note: noteText } : h
-      ))
-      setActiveNote(null)
-      setNoteText('')
-    }
-  }
-
-  const handleDeleteHighlight = (id: string) => {
-    setHighlights(highlights.filter(h => h.id !== id))
-    setActiveNote(null)
-  }
-
-  const handleClickOutside = (e: React.MouseEvent) => {
-    if (activeNote && noteInputRef.current && !noteInputRef.current.contains(e.target as Node)) {
-      handleSaveNote()
-    }
+  const updateArgNote = (index: number, value: string) => {
+    setArgNotes(prev => ({ ...prev, [index]: value }))
   }
 
   const handleDelete = (e: React.MouseEvent) => {
@@ -150,37 +105,8 @@ export default function ReadingCard({ reading, onDelete }: ReadingCardProps) {
     setExpandedArgs(newExpanded)
   }
 
-  // Function to render text with highlights
-  const renderWithHighlights = (text: string) => {
-    let result = text
-    highlights.forEach(h => {
-      if (text.includes(h.text)) {
-        result = result.replace(
-          h.text,
-          `<mark class="highlight-mark" data-id="${h.id}" style="background-color: ${h.color}; padding: 2px 0; cursor: pointer;">${h.text}</mark>`
-        )
-      }
-    })
-    return result
-  }
-
-  const handleHighlightClick = (e: React.MouseEvent) => {
-    const target = e.target as HTMLElement
-    if (target.classList.contains('highlight-mark')) {
-      const id = target.getAttribute('data-id')
-      if (id) {
-        const highlight = highlights.find(h => h.id === id)
-        if (highlight) {
-          const rect = target.getBoundingClientRect()
-          setActiveNote({ id, x: rect.left + rect.width / 2, y: rect.bottom + 10 })
-          setNoteText(highlight.note)
-        }
-      }
-    }
-  }
-
   return (
-    <div className="card-paper rounded-xl overflow-hidden relative" onClick={handleClickOutside}>
+    <div className="card-paper rounded-xl overflow-hidden relative">
       {/* Collapsed Header - Always visible */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
@@ -200,14 +126,6 @@ export default function ReadingCard({ reading, onDelete }: ReadingCardProps) {
             <p className="text-xs text-[var(--color-ink-muted)] mt-0.5">
               {reading.author && <span>{reading.author} • </span>}
               {reading.filename}
-              {highlights.length > 0 && (
-                <span className="ml-2 inline-flex items-center gap-1 text-amber-600">
-                  <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
-                  </svg>
-                  {highlights.length} note{highlights.length > 1 ? 's' : ''}
-                </span>
-              )}
             </p>
           </div>
         </div>
@@ -238,20 +156,7 @@ export default function ReadingCard({ reading, onDelete }: ReadingCardProps) {
       {/* Expanded Content */}
       {isExpanded && (
         <div className="border-t border-[var(--color-ink-muted)]/10 animate-fade-in">
-          <div
-            ref={contentRef}
-            className="p-5 space-y-6"
-            onMouseUp={handleMouseUp}
-            onClick={handleHighlightClick}
-          >
-            {/* Highlight instruction */}
-            <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-700 flex items-center gap-2">
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <path d="M9.53 16.122a3 3 0 00-5.78 1.128 2.25 2.25 0 01-2.4 2.245 4.5 4.5 0 008.4-2.245c0-.399-.078-.78-.22-1.128zm0 0a15.998 15.998 0 003.388-1.62m-5.043-.025a15.994 15.994 0 011.622-3.395m3.42 3.42a15.995 15.995 0 004.764-4.648l3.876-5.814a1.151 1.151 0 00-1.597-1.597L14.146 6.32a15.996 15.996 0 00-4.649 4.763m3.42 3.42a6.776 6.776 0 00-3.42-3.42" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              <span>Select any text to highlight & add notes. Click highlights to edit.</span>
-            </div>
-
+          <div className="p-5 space-y-6">
             {/* Key Terms Section */}
             {reading.key_terms && reading.key_terms.length > 0 && (
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
@@ -277,10 +182,7 @@ export default function ReadingCard({ reading, onDelete }: ReadingCardProps) {
                     {reading.key_terms.map((term, i) => (
                       <div key={i} className="bg-white rounded-lg p-3">
                         <span className="font-semibold text-amber-900">{term.term}:</span>
-                        <span
-                          className="text-[var(--color-ink-light)] ml-2"
-                          dangerouslySetInnerHTML={{ __html: renderWithHighlights(term.definition) }}
-                        />
+                        <span className="text-[var(--color-ink-light)] ml-2">{term.definition}</span>
                       </div>
                     ))}
                   </div>
@@ -292,10 +194,7 @@ export default function ReadingCard({ reading, onDelete }: ReadingCardProps) {
             <div className="flex flex-col items-center">
               <div className="bg-[var(--color-burgundy)] text-white px-6 py-5 rounded-xl max-w-3xl text-center shadow-lg">
                 <div className="text-xs uppercase tracking-wider opacity-80 mb-3">Main Thesis</div>
-                <p
-                  className="text-sm leading-relaxed [&_mark]:bg-yellow-300 [&_mark]:text-[var(--color-ink)]"
-                  dangerouslySetInnerHTML={{ __html: renderWithHighlights(reading.thesis) }}
-                />
+                <p className="text-sm leading-relaxed">{reading.thesis}</p>
               </div>
 
               {reading.arguments && reading.arguments.length > 0 && (
@@ -315,40 +214,82 @@ export default function ReadingCard({ reading, onDelete }: ReadingCardProps) {
                     <div key={index} className="flex flex-col items-center">
                       <div className="w-0.5 h-4 bg-[var(--color-ink-muted)]/30 -mt-4"></div>
 
-                      <div
-                        className={`
-                          w-72 bg-white border-2 rounded-xl shadow-md cursor-pointer transition-all duration-200
-                          ${expandedArgs.has(index)
-                            ? 'border-[var(--color-navy)] shadow-lg'
-                            : 'border-[var(--color-ink-muted)]/20 hover:border-[var(--color-navy)]/50 hover:shadow-lg'
-                          }
-                        `}
-                        onClick={(e) => toggleArgument(e, index)}
-                      >
-                        <div className="px-4 py-3 border-b border-[var(--color-ink-muted)]/10 bg-[var(--color-navy)]/5">
-                          <div className="flex items-center gap-2">
-                            <span className="w-7 h-7 rounded-full bg-[var(--color-navy)] text-white flex items-center justify-center text-sm font-bold">
-                              {index + 1}
-                            </span>
-                            <span className="text-xs uppercase tracking-wide text-[var(--color-navy)] font-semibold">
-                              Argument
-                            </span>
-                            <svg
-                              className={`w-4 h-4 text-[var(--color-ink-muted)] ml-auto transition-transform ${expandedArgs.has(index) ? 'rotate-180' : ''}`}
-                              viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                            >
-                              <path d="M19.5 8.25l-7.5 7.5-7.5-7.5" strokeLinecap="round" strokeLinejoin="round"/>
-                            </svg>
+                      <div className="flex items-start gap-2">
+                        <div
+                          className={`
+                            w-72 bg-white border-2 rounded-xl shadow-md cursor-pointer transition-all duration-200
+                            ${expandedArgs.has(index)
+                              ? 'border-[var(--color-navy)] shadow-lg'
+                              : 'border-[var(--color-ink-muted)]/20 hover:border-[var(--color-navy)]/50 hover:shadow-lg'
+                            }
+                          `}
+                          onClick={(e) => toggleArgument(e, index)}
+                        >
+                          <div className="px-4 py-3 border-b border-[var(--color-ink-muted)]/10 bg-[var(--color-navy)]/5">
+                            <div className="flex items-center gap-2">
+                              <span className="w-7 h-7 rounded-full bg-[var(--color-navy)] text-white flex items-center justify-center text-sm font-bold">
+                                {index + 1}
+                              </span>
+                              <span className="text-xs uppercase tracking-wide text-[var(--color-navy)] font-semibold">
+                                Argument
+                              </span>
+                              <svg
+                                className={`w-4 h-4 text-[var(--color-ink-muted)] ml-auto transition-transform ${expandedArgs.has(index) ? 'rotate-180' : ''}`}
+                                viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                              >
+                                <path d="M19.5 8.25l-7.5 7.5-7.5-7.5" strokeLinecap="round" strokeLinejoin="round"/>
+                              </svg>
+                            </div>
+                          </div>
+
+                          <div className="px-4 py-3">
+                            <p className="text-sm text-[var(--color-ink)] leading-relaxed">{arg.argument}</p>
                           </div>
                         </div>
 
-                        <div className="px-4 py-3">
-                          <p
-                            className="text-sm text-[var(--color-ink)] leading-relaxed"
-                            dangerouslySetInnerHTML={{ __html: renderWithHighlights(arg.argument) }}
-                          />
-                        </div>
+                        {/* Add Note Button */}
+                        <button
+                          onClick={(e) => toggleNoteVisibility(index, e)}
+                          className={`
+                            mt-3 w-7 h-7 rounded-full flex items-center justify-center transition-all duration-200
+                            ${visibleNotes.has(index) || argNotes[index]
+                              ? 'bg-sky-500 text-white shadow-md'
+                              : 'bg-sky-100 text-sky-600 hover:bg-sky-200'
+                            }
+                          `}
+                          title={visibleNotes.has(index) ? 'Hide note' : 'Add note'}
+                        >
+                          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            {visibleNotes.has(index) ? (
+                              <path d="M6 18L18 6M6 6l12 12" strokeLinecap="round" strokeLinejoin="round"/>
+                            ) : (
+                              <path d="M12 5v14m-7-7h14" strokeLinecap="round" strokeLinejoin="round"/>
+                            )}
+                          </svg>
+                        </button>
                       </div>
+
+                      {/* Student Note Box */}
+                      {visibleNotes.has(index) && (
+                        <div className="w-80 mt-3 animate-fade-in">
+                          <div className="bg-sky-50 border-2 border-sky-200 rounded-xl p-3 shadow-sm">
+                            <div className="flex items-center gap-2 mb-2">
+                              <svg className="w-4 h-4 text-sky-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                <path d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125" strokeLinecap="round" strokeLinejoin="round"/>
+                              </svg>
+                              <span className="text-xs font-medium text-sky-700">My Notes</span>
+                              <span className="text-xs text-sky-500 ml-auto">Auto-saved</span>
+                            </div>
+                            <textarea
+                              value={argNotes[index] || ''}
+                              onChange={(e) => updateArgNote(index, e.target.value)}
+                              onClick={(e) => e.stopPropagation()}
+                              placeholder="Write your notes here..."
+                              className="w-full h-24 bg-white border border-sky-200 rounded-lg p-2 text-sm text-[var(--color-ink)] placeholder:text-sky-400 resize-none focus:outline-none focus:ring-2 focus:ring-sky-300 focus:border-transparent"
+                            />
+                          </div>
+                        </div>
+                      )}
 
                       {/* Evidence Section */}
                       {expandedArgs.has(index) && arg.evidence && arg.evidence.length > 0 && (
@@ -366,15 +307,11 @@ export default function ReadingCard({ reading, onDelete }: ReadingCardProps) {
                                 key={evIndex}
                                 className="w-68 bg-[var(--color-sage)]/10 border border-[var(--color-sage)]/30 rounded-lg px-4 py-3"
                               >
-                                <p
-                                  className="text-sm text-[var(--color-ink)] leading-relaxed italic"
-                                  dangerouslySetInnerHTML={{ __html: `"${renderWithHighlights(ev.text)}"` }}
-                                />
+                                <p className="text-sm text-[var(--color-ink)] leading-relaxed italic">"{ev.text}"</p>
                                 {ev.explanation && (
-                                  <p
-                                    className="text-xs text-[var(--color-ink-light)] mt-2 leading-relaxed"
-                                    dangerouslySetInnerHTML={{ __html: `→ ${renderWithHighlights(ev.explanation)}` }}
-                                  />
+                                  <p className="text-xs text-[var(--color-ink-light)] mt-2 leading-relaxed">
+                                    → {ev.explanation}
+                                  </p>
                                 )}
                                 <div className="mt-2 flex justify-end">
                                   <span className="text-xs font-medium text-[var(--color-sage)] bg-[var(--color-sage)]/20 px-2 py-0.5 rounded">
@@ -401,10 +338,7 @@ export default function ReadingCard({ reading, onDelete }: ReadingCardProps) {
                   </svg>
                   <span className="font-semibold text-purple-800">Why This Matters</span>
                 </div>
-                <p
-                  className="text-sm text-purple-900 leading-relaxed"
-                  dangerouslySetInnerHTML={{ __html: renderWithHighlights(reading.significance) }}
-                />
+                <p className="text-sm text-purple-900 leading-relaxed">{reading.significance}</p>
               </div>
             )}
 
@@ -419,10 +353,7 @@ export default function ReadingCard({ reading, onDelete }: ReadingCardProps) {
                       </svg>
                       <span className="font-semibold text-blue-800">Historical Context</span>
                     </div>
-                    <p
-                      className="text-sm text-blue-900 leading-relaxed"
-                      dangerouslySetInnerHTML={{ __html: renderWithHighlights(reading.historical_context) }}
-                    />
+                    <p className="text-sm text-blue-900 leading-relaxed">{reading.historical_context}</p>
                   </div>
                 )}
                 {reading.historiography && (
@@ -433,74 +364,12 @@ export default function ReadingCard({ reading, onDelete }: ReadingCardProps) {
                       </svg>
                       <span className="font-semibold text-slate-700">Historiographical Approach</span>
                     </div>
-                    <p
-                      className="text-sm text-slate-700 leading-relaxed"
-                      dangerouslySetInnerHTML={{ __html: renderWithHighlights(reading.historiography) }}
-                    />
+                    <p className="text-sm text-slate-700 leading-relaxed">{reading.historiography}</p>
                   </div>
                 )}
               </div>
             )}
 
-            {/* Notes Summary */}
-            {highlights.length > 0 && (
-              <div className="bg-yellow-50 border border-yellow-300 rounded-xl p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <svg className="w-5 h-5 text-yellow-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                    <path d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                  <span className="font-semibold text-yellow-800">Your Notes ({highlights.length})</span>
-                </div>
-                <div className="space-y-2">
-                  {highlights.map(h => (
-                    <div key={h.id} className="bg-white rounded-lg p-3 border border-yellow-200">
-                      <p className="text-sm text-[var(--color-ink)] italic bg-yellow-100 px-1 inline">"{h.text}"</p>
-                      {h.note && (
-                        <p className="text-sm text-[var(--color-ink-light)] mt-2">→ {h.note}</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-          </div>
-        </div>
-      )}
-
-      {/* Note Editor Popup - Post-it style */}
-      {activeNote && (
-        <div
-          className="fixed z-50 transform -translate-x-1/2 animate-fade-in"
-          style={{ left: Math.min(Math.max(activeNote.x, 150), window.innerWidth - 150), top: activeNote.y }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="bg-yellow-200 rounded-lg shadow-xl p-4 w-64 border-2 border-yellow-300" style={{ boxShadow: '4px 4px 0 rgba(0,0,0,0.1)' }}>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-semibold text-yellow-800 uppercase tracking-wide">Your Note</span>
-              <button
-                onClick={() => handleDeleteHighlight(activeNote.id)}
-                className="text-yellow-700 hover:text-red-600 transition-colors"
-              >
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                  <path d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </button>
-            </div>
-            <textarea
-              ref={noteInputRef}
-              value={noteText}
-              onChange={(e) => setNoteText(e.target.value)}
-              placeholder="Write your note here..."
-              autoFocus
-              className="w-full h-24 bg-yellow-100 border border-yellow-300 rounded-md p-2 text-sm text-[var(--color-ink)] placeholder:text-yellow-600 resize-none focus:outline-none focus:ring-2 focus:ring-yellow-400"
-            />
-            <button
-              onClick={handleSaveNote}
-              className="mt-2 w-full bg-yellow-400 hover:bg-yellow-500 text-yellow-900 py-1.5 rounded-md text-sm font-medium transition-colors"
-            >
-              Save Note
-            </button>
           </div>
         </div>
       )}
